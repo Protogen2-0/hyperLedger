@@ -8,6 +8,7 @@ function createPerson(role, name, producingRegions, availableRegions, currentReg
         availableRegions: availableRegions,
         currentRegion: currentRegion,
         desc: desc,
+        productList: [],
         isBlocked: isBlocked
     }
 }
@@ -35,7 +36,7 @@ function createRequest(productName, volume, deliveryDate, technicalRequirements,
         deliveryRequirements: deliveryRequirements,
         deliveryAddress: deliveryAddress,
         needPrepayment: needPrepayment,
-        currentState: null,
+        currentState: requestStates[0],
         // производитель может подтверждать заявку
         acceptedByProducer: null,
         // производитель может указать актуальные сведенья
@@ -60,22 +61,22 @@ async function putState(ctx, key, value){
 }
 
 // gets org1MSP, org2MSP etc and cuts "MSP" to get only org part : "org1", "org2"
-function getUserOrg(ctx){
+function getMyOrg(ctx){
     return ctx.clientIdentity.getMSPID().replace("MSP", ""); 
 }
 
 // returns current user's login in format "org:login", "org1:ivan", "org2:alex" etc
-function getUserLogin(ctx){
-    return getUserOrg(ctx) + ":" /* + login of current user ? */
+function getMyLogin(ctx){
+    return getMyOrg(ctx) + ":" /* + login of current user ? */
 }
 
 async function isAdmin(ctx){ // key = "org:name"
-    return ( await getState(ctx, getUserLogin(ctx)).role ) === "admin"; 
+    return ( await getState(ctx, getMyLogin(ctx)).role ) === "admin"; 
 }
 
 // current user must be from "org" org
 function iMustBeFromThisOrg(ctx, org){
-    if( getUserOrg(ctx) !== org)
+    if( getMyOrg(ctx) !== org)
         throw new Error("you must be from org : " + org)
 }
 
@@ -87,19 +88,19 @@ function iMustBeAdmin(ctx){
 
 // checks whether org you're currently in is blocked
 function isMyOrgblocked(ctx){
-    return blockedOrgs.includes(getUserOrg(ctx))
+    return blockedOrgs.includes(getMyOrg(ctx))
 }
 
 // current user must not be blocked (also counting org block)
 async function iMustBeNotBlocked(ctx){
     if( isMyOrgblocked(ctx) )
         throw new Error("org you're currently in is blocked")
-    if( await getState(ctx, getUserLogin(ctx).isBlocked) )
+    if( await getState(ctx, getMyLogin(ctx).isBlocked) )
         throw new Error("you're blocked")
 }
 
 const requestStates = {
-    0: "Ожидание подтверждения производителем",
+    0: "Ожидание подтверждение производителем",
     1: "Ожидание подтверждение клиента",
     2: "Ожидание предоплаты",
     3: "Исполнение",
@@ -161,16 +162,33 @@ class ProductContract extends Contract {
         await putState(ctx, "product:" + ctx.stub.getTxID(), createProduct(name, image, desc, availableRegions));
     }
 
-    async confirmProduct(ctx, productId, minVolume, maxVolume, availableDistributors){
+    // note: "availableDistributors" should be array with "org:login" elements !
+    async acceptProduct(ctx, productId, name, image, desc, availableRegions, minVolume, maxVolume, availableDistributors){
         iMustBeAdmin(ctx);
         const product = await getState(ctx, "product:" + productId);
+        if(name) product.name = name;
+        if(image) product.image = image;
+        if(desc) product.desc = desc;
+        if(availableRegions) product.availableRegions = availableRegions;
         product.minVolume = minVolume ?? null;
         product.maxVolume = maxVolume ?? null;
         product.availableDistributors = availableDistributors ?? null;
         product.acceptedByOperator = true;
         await putState(ctx, "product:" + productId, product);
+        if(Array.isArray(availableDistributors)) 
+            for(i = 0; i < availableDistributors.length; i++){
+                const user = await getState(ctx, availableDistributors[i]);
+                if( !user.productList.includes(productId) )
+                    user.productList.push(productId)
+                    await putState(ctx, availableDistributors[i], user)
+            }
     }
 
+    async addRequest(ctx, productName, volume, deliveryDate, technicalRequirements, deliveryRequirements, deliveryAddress, needPrepayment){
+        iMustBeFromThisOrg(ctx, "org4");
+        iMustBeNotBlocked(ctx);
+        await putState(ctx, "request:" + ctx.stub.getTxID(), createRequest(productName, volume, deliveryDate, technicalRequirements, deliveryRequirements, deliveryAddress, needPrepayment));
+    }
     
 }
 
