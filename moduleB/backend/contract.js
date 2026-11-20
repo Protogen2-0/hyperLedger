@@ -325,3 +325,5 @@ class ProductContract extends Contract {
     
 }
 
+module.exports.contracts = [ProductContract];
+
