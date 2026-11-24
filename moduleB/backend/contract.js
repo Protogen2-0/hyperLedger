@@ -1,4 +1,5 @@
-import Contract from "fabric-contract-api";
+'use strict';
+const {Contract} = require("fabric-contract-api")
 
 function createPerson(role, name, producingRegions, availableRegions, currentRegion, desc, isBlocked){
     return {
@@ -61,7 +62,7 @@ function createRequest(productName, volume, deliveryDate, technicalRequirements,
 }
 
 async function getState(ctx, key){
-    return JSON.parse(await ctx.stub.getState(key).toString()); 
+    return JSON.parse( (await ctx.stub.getState(key)) .toString() ); 
 }
 
 async function putState(ctx, key, value){
@@ -79,7 +80,7 @@ function getMyLogin(ctx){
 }
 
 async function isAdmin(ctx){ // key = "org:name"
-    return ( await getState(ctx, getMyLogin(ctx)).role ) === "admin"; 
+    return ( (await getState(ctx, getMyLogin(ctx))) .role ) === "admin"; 
 }
 
 // current user must be from "org" org
@@ -89,8 +90,8 @@ function iMustBeFromThisOrg(ctx, org){
 }
 
 // current user must be admin (only possible when user is from org1)
-function iMustBeAdmin(ctx){
-    if( ! isAdmin(ctx) ) 
+async function iMustBeAdmin(ctx){
+    if( !(await isAdmin(ctx)) ) 
         throw new Error("user is not admin")
 } 
 
@@ -98,7 +99,7 @@ function iMustBeAdmin(ctx){
 async function iMustBeNotBlocked(ctx){
     if( blockedOrgs.includes(getMyOrg(ctx)) )
         throw new Error("org you're currently in is blocked")
-    if( await getState(ctx, getMyLogin(ctx).isBlocked) )
+    if( ( await getState(ctx, getMyLogin(ctx)) ).isBlocked )
         throw new Error("you're blocked")
 }
 
@@ -123,12 +124,12 @@ class ProductContract extends Contract {
     }
 
     async addUser(ctx, org, name, producingRegions, availableRegions, currentRegion, desc){
-        iMustBeAdmin(ctx);
+        await iMustBeAdmin(ctx);
         await putState(ctx, org + ":" + name, createPerson("employee", name, producingRegions, availableRegions, currentRegion, desc, false));
     }
 
     async blockUser(ctx, org, name){
-        iMustBeAdmin(ctx);
+        await iMustBeAdmin(ctx);
         const user = await getState(ctx, org + ":" + name);
         if(user.isAdmin)
             throw new Error("cant block admins")
@@ -136,14 +137,14 @@ class ProductContract extends Contract {
         await putState(ctx, org + ":" + name, user);
     }
 
-    blockOrg(ctx, org){
-        iMustBeAdmin(ctx);
+    async blockOrg(ctx, org){
+        await iMustBeAdmin(ctx);
         if( !blockedOrgs.includes(org))
             blockedOrgs.push(org)
     }
 
     async unblockUser(ctx, org, name){
-        iMustBeAdmin(ctx);
+        await iMustBeAdmin(ctx);
         const user = await getState(ctx, org + ":" + name);
         if(user.isAdmin)
             throw new Error("cant unblock admins")
@@ -151,8 +152,8 @@ class ProductContract extends Contract {
         await putState(ctx, org + ":" + name, user);
     }
 
-    unblockOrg(ctx, org){
-        iMustBeAdmin(ctx);
+    async unblockOrg(ctx, org){
+        await iMustBeAdmin(ctx);
         if( blockedOrgs.includes(org))
             blockedOrgs = blockedOrgs.filter( ORG => ORG != org )
     }

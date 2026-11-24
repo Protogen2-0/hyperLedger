@@ -1,6 +1,6 @@
 import cors from "cors";
 import express from "express";
-import grpc from "grpc";
+import grpc from "@grpc/grpc-js";
 import fabric from "@hyperledger/fabric-gateway";
 import childProcess from "child_process";
 import path from "path";
