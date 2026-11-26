@@ -62,11 +62,19 @@ function createRequest(productName, volume, deliveryDate, technicalRequirements,
 }
 
 async function getState(ctx, key){
-    return JSON.parse( (await ctx.stub.getState(key)) .toString() ); 
+    const res = await ctx.stub.getState(key);
+    if(res.length === 0)
+        return null
+    return JSON.parse( res.toString() ); 
 }
 
 async function putState(ctx, key, value){
-    await ctx.stub.putState(key, Buffer.from(JSON.stringify(value)));
+    try{
+        await ctx.stub.putState(key, Buffer.from(JSON.stringify(value)));
+    }
+    catch(e){
+        throw new Error("error in putState:" + e.message)
+    }
 }
 
 // gets "org1MSP", "org2MSP" etc and cuts "MSP" to get only org part : "org1", "org2"
@@ -322,6 +330,10 @@ class ProductContract extends Contract {
         request.reclamationComment = comment;
         request.currentState = requestStates[5];
         await putState(ctx, "request:" + requestId, request);
+    }
+
+    async getMe(ctx){
+        return await getState(ctx, getMyLogin(ctx))
     }
     
 }
