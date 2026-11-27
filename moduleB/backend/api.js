@@ -13,8 +13,8 @@ const FABRIC_SAMPLES_PATH = path.resolve(__dirname, "../../fabric-samples");
 const ORGANIZATIONS_PATH = FABRIC_SAMPLES_PATH + "/test-network/organizations";
 
 const ORGS = {
-    org1: { msp: "org1MSP"  , peer: "localhost:7051"  ,    caPort: 7054    }, // операторы
-    org2: { msp: "org2MSP"  , peer: "localhost:9051"  ,    caPort: 8054    }, // производители
+    org1: { msp: "Org1MSP"  , peer: "localhost:7051"  ,    caPort: 7054    }, // операторы
+    org2: { msp: "Org2MSP"  , peer: "localhost:9051"  ,    caPort: 8054    }, // производители
     // org3: { msp: "org3MSP"  , peer: "localhost:11051" , /* caPort: 9054  */}, // дистрибуторы
     // org4: { msp: "org4MSP"/*, peer: "localhost:13051" ,    caPort: 10054 */}  // клиенты
 }
@@ -116,7 +116,10 @@ async function callContract(type, token, method, args){
         return JSON.parse(Buffer.from(result).toString());
     }
     catch(e){
-        console.log("contract error______9______" + e.toString())
+        console.log("contract error______9______" + JSON.stringify(e))
+        if(e.details){
+            console.log(JSON.stringify(e.details))
+        }
         throw new Error(e);
     }
     finally{
@@ -137,7 +140,7 @@ app.post("/register", async (req, res) => {
         console.log("_____2______")
         const token = login(req.body.org, req.body.name, req.body.password);
         console.log("_____3______")
-        await callContract("submit", token, "addUser", [req.body.org, req.body.name, req.body.producingRegions, req.body.availableRegions, req.body.currentRegion, req.body.desc] )
+        await callContract("submit", token, "addUser", [req.body.org, req.body.name, JSON.stringify(req.body.producingRegions), JSON.stringify(req.body.availableRegions), req.body.currentRegion, req.body.desc] )
         console.log("_____4______")
         res.json({token: token})
     }
@@ -156,6 +159,7 @@ app.post("/login", (req, res) => {
 })
 
 app.get("/contract/:method", async (req, res) => {
+        console.log(JSON.stringify(req))
     try{
         const args = [].concat(req.query.args || []);
         res.json(await callContract("evaluate", req.headers.authorization, req.params.method, args))
@@ -166,6 +170,7 @@ app.get("/contract/:method", async (req, res) => {
 })
 
 app.post("/contract/:method", async (req, res) => {
+        console.log(JSON.stringify(req))
     try{
         const args = req.body.args || [];
         res.json(await callContract("submit", req.headers.authorization, req.params.method, args))

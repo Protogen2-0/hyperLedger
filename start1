@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+cd "./fabric-samples/test-network"
+export PATH=$PWD/../bin:$PATH
+create_admin() {  # create_admin <имя> <пароль>
+  export FABRIC_CA_CLIENT_HOME=$PWD/organizations/peerOrganizations/org1.example.com
+  CA_CERT=$PWD/organizations/fabric-ca/org1/ca-cert.pem
+  fabric-ca-client register --caname ca-org1 --id.name "$1" --id.secret "$2" --id.type client \
+    --tls.certfiles "$CA_CERT"
+  fabric-ca-client enroll -u "https://$1:$2@localhost:7054" --caname ca-org1 --tls.certfiles "$CA_CERT" \
+    -M "$PWD/organizations/peerOrganizations/org1.example.com/users/$1@org1.example.com/msp"
+}
+
+create_employee() {  # create_employee <имя> <пароль>
+  export FABRIC_CA_CLIENT_HOME=$PWD/organizations/peerOrganizations/org2.example.com
+  CA_CERT=$PWD/organizations/fabric-ca/org2/ca-cert.pem
+  fabric-ca-client register --caname ca-org2 --id.name "$1" --id.secret "$2" --id.type client \
+    --tls.certfiles "$CA_CERT"
+  fabric-ca-client enroll -u "https://$1:$2@localhost:8054" --caname ca-org2 --tls.certfiles "$CA_CERT" \
+    -M "$PWD/organizations/peerOrganizations/org2.example.com/users/$1@org2.example.com/msp"
+}
+
+create_admin ivan ivanpw
+create_employee igor 123

@@ -127,8 +127,8 @@ class ProductContract extends Contract {
     async InitLedger(ctx){
         await putState(ctx, "org1:ivan", createPerson("admin",    "ivan", [], [], "", "", false)); // org1 = Operator
         await putState(ctx, "org2:igor", createPerson("employee", "igor", [], [], "", "first producer", false)); // org2 = Producer
-        await putState(ctx, "org3:petr", createPerson("employee", "petr", [], [], "", "", false)); // org3 = Distributor
-        await putState(ctx, "org4:alex", createPerson("employee", "alex", [], [], "", "", false)); // org4 = Client
+        // await putState(ctx, "org3:petr", createPerson("employee", "petr", [], [], "", "", false)); // org3 = Distributor
+        // await putState(ctx, "org4:alex", createPerson("employee", "alex", [], [], "", "", false)); // org4 = Client
     }
 
     async addUser(ctx, org, name, producingRegions, availableRegions, currentRegion, desc){
